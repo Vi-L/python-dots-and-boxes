@@ -1,5 +1,6 @@
 import sys, pygame
 from enum import Enum
+pygame.font.init()
 pygame.init()
 
 Owner = Enum('Owner', 'none red blue')
@@ -44,6 +45,8 @@ class Game:
 
         if not any_claimed:
             self.player = self.other_player()
+
+        self.ply += 1
         return True
 
     def other_player(self):
@@ -80,6 +83,9 @@ class Game:
     def get_edge_owner(self, edge_index):
         return self.edges[edge_index].owner
 
+    def get_box_owner(self, box_index):
+        return self.boxes[box_index].owner
+
 class Edge:
     def __init__(self):
         self.owner = Owner.none
@@ -93,16 +99,9 @@ class Box:
 
 
 board = Game()
-board.make_move(1)
-board.make_move(3)
-board.make_move(4)
-board.make_move(10)
 # print(board.edges[1].boxes[0].owner, board.player)
 
-
-
-
-size = width, height = 320, 240
+size = width, height = 320, 320
 black = 0, 0, 0
 red = 255, 0, 0
 blue = 0, 0, 255
@@ -121,8 +120,15 @@ for h in range(grid_height):
             x = int( (w+0.5) * width // grid_width )
             y = int( (h+0.5) * height // grid_height )
             points.append( (x, y) )
-print(points)         
 
+box_centers = []
+for h in range(grid_height - 1):
+    for w in range(grid_width - 1):
+        x = int( (w+1) * width // grid_width)
+        y = int( (h+1) * height // grid_height )
+        box_centers.append( (x, y) )
+
+print(box_centers)
 edge_index_to_pair = [
     (points[0], points[1]),
     (points[1], points[2]),
@@ -140,6 +146,7 @@ edge_index_to_pair = [
 pair_to_edge_index = {e: i for i, e in enumerate(edge_index_to_pair)}
 for i, e in enumerate(edge_index_to_pair): pair_to_edge_index[e[::-1]] = i
 
+font = pygame.font.SysFont('Comic Sans MS', 24)
 
 while 1:
     mouse_clicked = False
@@ -184,7 +191,24 @@ while 1:
         elif board.get_edge_owner(i) == Owner.blue:
             pygame.draw.line(screen, blue, *edge_index_to_pair[i])
 
+    for i in range(4):
+        if board.get_box_owner(i) == Owner.red:
+            pygame.draw.circle(screen, red, box_centers[i], dot_rad)
+        elif board.get_box_owner(i) == Owner.blue:
+            pygame.draw.circle(screen, blue, box_centers[i], dot_rad)
+
+    img = False
     if mouse_clicked:
-        board.make_move(pair_to_edge_index[(closest_point, sec_closest_point)])
+        if board.make_move(pair_to_edge_index[(closest_point, sec_closest_point)]):
+            if board.check_win() is not None:
+                if board.check_win() == Owner.red:
+                    img = font.render('Red wins', True, red)
+                elif board.check_win() == Owner.blue:
+                    img = font.render('Blue wins', True, blue)
+                else:
+                    img = font.render('Draw', True, (255, 0, 255))
     
     pygame.display.flip()
+    if img:
+        screen.blit(img, (20, 20)) #TODO: text not showing up
+    
