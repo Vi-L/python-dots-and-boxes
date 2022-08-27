@@ -1,4 +1,6 @@
+from copy import deepcopy
 import sys, pygame
+import random
 from enum import Enum
 pygame.font.init()
 pygame.init()
@@ -86,6 +88,18 @@ class Game:
     def get_box_owner(self, box_index):
         return self.boxes[box_index].owner
 
+    def copy_game(self):
+        return deepcopy(self)
+
+    def get_possible_moves(self):
+        # res = [I for I in range(len(self.edges)) 
+        # if self.edges[I].owner != Owner.none]
+        res = []
+        for edge_index in range(len(self.edges)):
+            if self.edges[edge_index].owner != Owner.none:
+                res.append(edge_index)
+        return res
+
 class Edge:
     def __init__(self):
         self.owner = Owner.none
@@ -96,7 +110,37 @@ class Box:
         self.owner = Owner.none
         self.edges = []
 
+def get_ai_move(board, simulations):
+    # https://gist.github.com/ggorlen/effe8d2878f0ab36e1dbabb542db66b2
+    best_score = -float("inf")
+    moves = board.get_possible_moves()
+    best_move = moves[0]
+    penalty = 10
+    reward = 1
 
+    for move in moves:
+        score = 0
+
+        for i in range(simulations):
+            copy = board.copy_game()
+            copy.make_move(move)
+            game_res = copy.check_win()
+            while game_res == None:
+                possible_moves = copy.get_possible_moves()
+                copy.make_move(random.choice(possible_moves))
+                game_res = copy.check_win()
+
+            if game_res != Owner.none:
+                if game_res == Owner.red:
+                    score -= penalty
+                else:
+                    score += reward
+
+        if score > best_score:
+            best_score = score
+            best_move = move
+
+    return best_move
 
 board = Game()
 # print(board.edges[1].boxes[0].owner, board.player)
@@ -107,11 +151,13 @@ red = 255, 0, 0
 blue = 0, 0, 255
 
 line_color = 0, 255, 0
-dot_color = 0, 0, 255
+dot_color = 90, 90, 90
 dot_rad = 10
 
 grid_width = 3
 grid_height = 3
+
+img = False
 
 screen = pygame.display.set_mode(size)
 points = []
@@ -160,12 +206,6 @@ while 1:
     # pygame.draw.line(screen,line_color, (60, 80), (130, 100))
     # pygame.draw.circle(screen, circle_color, (50, 50), 20)
 
-    for point in points:
-        pygame.draw.circle(screen, 
-                           dot_color, 
-                           point,
-                           dot_rad)
-
 
     min_dist = float("inf")
     sec_min_dist = float("inf")
@@ -191,13 +231,19 @@ while 1:
         elif board.get_edge_owner(i) == Owner.blue:
             pygame.draw.line(screen, blue, *edge_index_to_pair[i])
 
+    for point in points:
+        pygame.draw.circle(screen, 
+                           dot_color, 
+                           point,
+                           dot_rad)
+    
     for i in range(4):
         if board.get_box_owner(i) == Owner.red:
             pygame.draw.circle(screen, red, box_centers[i], dot_rad)
         elif board.get_box_owner(i) == Owner.blue:
             pygame.draw.circle(screen, blue, box_centers[i], dot_rad)
 
-    img = False
+    
     if mouse_clicked:
         if board.make_move(pair_to_edge_index[(closest_point, sec_closest_point)]):
             if board.check_win() is not None:
@@ -208,7 +254,7 @@ while 1:
                 else:
                     img = font.render('Draw', True, (255, 0, 255))
     
-    pygame.display.flip()
     if img:
-        screen.blit(img, (20, 20)) #TODO: text not showing up
+        screen.blit(img, (20, 20))
+    pygame.display.flip()
     

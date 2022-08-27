@@ -1,7 +1,5 @@
-- show winner
 - allow game to be restarted
 - better indication of whose turn it is (preview edge from green to a shade of blue/red)
-- change dots to something other than blue
 - show number of boxes claimed in text
 - add AI
 - sound?
